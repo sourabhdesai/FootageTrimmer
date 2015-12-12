@@ -9,6 +9,8 @@ using std::string;
 
 using namespace cv;
 
+#define TOLERANCE_FACTOR 0.66
+
 /**
  * Command Line Options:
  * -v: path to video to time compress
@@ -78,8 +80,10 @@ int main(int argc, char *argv[]) {
     FootageTrimmer footageTrimmer;
 
     if (trainedPicPath.length()) {
-        Mat_<Vec3d> trainedPic = imread(trainedPicPath);
-        footageTrimmer = FootageTrimmer(trainedPic); // train the footage trimmer from a saved instance
+        Mat_<Vec3b> trainedPic = imread(trainedPicPath);
+        Mat_<Vec3d> trainedPicDouble;
+        trainedPic.convertTo(trainedPicDouble, CV_64F);
+        footageTrimmer = FootageTrimmer(trainedPicDouble); // train the footage trimmer from a saved instance
     } else {
         footageTrimmer = FootageTrimmer(inputVideo); // train the footage trimmer from the given video
     }
@@ -100,6 +104,15 @@ int main(int argc, char *argv[]) {
         }
         cout << "]" << endl;
     }
+
+    if (compressedVideoPath.length()) {
+        double fps = inputVideo.get(CV_CAP_PROP_FPS);
+        Size frameSize = footageTrimmer.getFrameSize();
+        VideoWriter outputVideo(compressedVideoPath, CV_FOURCC('m', 'p', '4', 'v'), fps, frameSize);
+        FootageTrimmer::TrimmedFootage trimmedFootage = footageTrimmer.trim(inputVideo, TOLERANCE_FACTOR * frameSize.area());
+        trimmedFootage >> outputVideo;
+    }
+
 
     return EXIT_SUCCESS;
 }

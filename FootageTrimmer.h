@@ -23,10 +23,26 @@ public:
 
     void saveToFile(string filepath);
 
-
     void displayTrainedImage(string windowName);
 
     vector<double> getTimeFrames() const;
+
+	Size getFrameSize() const;
+
+	class TrimmedFootage {
+	public:
+		void operator>>(Mat_<Vec3d> & outFrame);
+		void operator>>(VideoWriter & videoWriter);
+
+		TrimmedFootage(Mat_<Vec3d> avgFrame, VideoCapture & videoCapture, double tolerance);
+
+	private:
+		Mat_<Vec3d> avgFrame;
+		VideoCapture videoCapture;
+		const double tolerance;
+	};
+
+	FootageTrimmer::TrimmedFootage trim(VideoCapture & videoCapture, double tolerance);
 
 private:
     Mat_<Vec3d> avgPicBuffer;
@@ -38,7 +54,7 @@ private:
 	/**
 	 * Calculates values that indicates the amount of difference between the two images.
 	 */
-	double imageDiffVal(const Mat_<Vec3d> &imgA, const Mat_<Vec3d> &imgB);
+	static double imageDiffVal(const Mat_<Vec3d> &imgA, const Mat_<Vec3d> &imgB);
 
 	Mat_<Vec3d> getAveragePicture(const vector<Mat_<Vec3d> > &images);
 

@@ -87,15 +87,14 @@ Mat_<Vec3d> FootageTrimmer::getAveragePicture(const vector<Mat_<Vec3d> > & image
 
     Mat_<Vec3d> averageImage(img_h, img_w);
 
-    int row, col;
     vector<Mat_<Vec3d> >::const_iterator it;
-    double numImages = double(images.size());
 
     for (it = images.begin(); it != images.end(); it++) {
         Mat_<Vec3d> img = *it;
         accumulate(img, averageImage);
     }
 
+    double numImages = double(images.size());
     averageImage = averageImage / numImages;
     return averageImage;
 }
@@ -118,7 +117,12 @@ double FootageTrimmer::imageDiffVal(const Mat_<Vec3d> & imgA, const Mat_<Vec3d> 
 //	}
 //
 //	return similaritySum / double(rows * cols);
-    ImgDiffProcessor diffProcessor(imgA, imgB);
+    Mat_<Vec3d> imgABlurred;
+    Mat_<Vec3d> imgBBlurred;
+
+    GaussianBlur(imgA, imgABlurred, Size(7,7), 1.5, 1.5);
+    GaussianBlur(imgB, imgBBlurred, Size(7,7), 1.5, 1.5);
+    ImgDiffProcessor diffProcessor(imgABlurred, imgBBlurred);
     int numPixels = imgA.rows * imgA.cols;
     parallel_for_(Range(0,numPixels), diffProcessor);
     return diffProcessor.getValue();
@@ -150,4 +154,41 @@ void FootageTrimmer::displayTrainedImage(string windowName) {
 
 vector<double> FootageTrimmer::getTimeFrames() const {
     return this->frameTimes;
+}
+
+Size FootageTrimmer::getFrameSize() const{
+    return this->trainedPic.size();
+}
+
+FootageTrimmer::TrimmedFootage::TrimmedFootage(Mat_<Vec3d> avgFrame, VideoCapture & videoCapture, double tolerance):
+        avgFrame(avgFrame), videoCapture(videoCapture), tolerance(tolerance) {
+    // nothing else to do other than initialization list
+}
+
+void FootageTrimmer::TrimmedFootage::operator>>(Mat_<Vec3d> &outFrame) {
+    Mat_<Vec3b> intFrame;
+    do {
+        this->videoCapture >> intFrame;
+        intFrame.convertTo(outFrame, CV_64F);
+    } while (!outFrame.empty() && FootageTrimmer::imageDiffVal(this->avgFrame, outFrame) < this->tolerance);
+}
+
+void FootageTrimmer::TrimmedFootage::operator>>(VideoWriter &videoWriter) {
+    Mat_<Vec3d> frame;
+    Mat_<Vec3b> intFrame;
+    (*this) >> frame;
+    long frameCount = 0;
+    while (!frame.empty()) {
+        if ((frameCount++ % 25) == 0) {
+            double videoPos = this->videoCapture.get(CV_CAP_PROP_POS_AVI_RATIO);
+            cout << "Video Position: " << videoPos << endl;
+        }
+        frame.convertTo(intFrame, CV_8UC3);
+        videoWriter << intFrame;
+        (*this) >> frame;
+    }
+}
+
+FootageTrimmer::TrimmedFootage FootageTrimmer::trim(VideoCapture & videoCapture, double tolerance) {
+    return FootageTrimmer::TrimmedFootage(this->trainedPic, videoCapture, tolerance);
 }
