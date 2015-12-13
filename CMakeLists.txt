@@ -6,6 +6,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -I/usr/local/include/opencv -
 set(SOURCE_FILES
         FootageTrimmer.cpp
         FootageTrimmer.h
-        main.cpp ImgDiffProcessor.cpp ImgDiffProcessor.h)
+        main.cpp ImgSimilarityProcessor.cpp ImgSimilarityProcessor.h)
 
 add_executable(svdesai2_final ${SOURCE_FILES})

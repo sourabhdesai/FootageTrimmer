@@ -46,12 +46,12 @@ Mat_<Vec3d> FootageTrimmer::getBackgroundPic(VideoCapture & trainingVideo) {
 int FootageTrimmer::findMostDifferent(const vector<Mat_<Vec3d> > & images, double *img_difference) {
     this->avgPicBuffer = this->avgPicBuffer.empty() ? this->getAveragePicture(images) : this->avgPicBuffer;
     int mostDifferentImgIdx = 0;
-    double maxDifference = this->imageDiffVal(images[0], this->avgPicBuffer);
+    double maxDifference = this->imageSimilarityVal(images[0], this->avgPicBuffer);
 
     int img_idx;
     for (img_idx = 1; img_idx < images.size(); img_idx++) {
 		Mat_<Vec3d> img = images[img_idx];
-		double difference = this->imageDiffVal(img, this->avgPicBuffer);
+		double difference = this->imageSimilarityVal(img, this->avgPicBuffer);
 
         if (maxDifference < difference) {
             maxDifference = difference;
@@ -75,7 +75,7 @@ Mat_<Vec3d> FootageTrimmer::findCloserImage(VideoCapture & trainingVideo, const 
         trainingVideo >> candidateIntImg;
         candidateIntImg.convertTo(candidateImg, CV_64F);
 //        cvtColor(candidateImg, candidateImg, CV_BGR2RGB);
-    } while(this->imageDiffVal(candidateImg, this->avgPicBuffer) > maxSimilarity);
+    } while(this->imageSimilarityVal(candidateImg, this->avgPicBuffer) > maxSimilarity);
 
     return candidateImg; // this image passed the similarity threshold
 }
@@ -99,33 +99,16 @@ Mat_<Vec3d> FootageTrimmer::getAveragePicture(const vector<Mat_<Vec3d> > & image
     return averageImage;
 }
 
-double FootageTrimmer::imageDiffVal(const Mat_<Vec3d> & imgA, const Mat_<Vec3d> & imgB) {
-//	int rows = min(imgA.rows, imgB.rows);
-//	int cols = min(imgA.cols, imgB.cols);
-//
-//	int row, col;
-//	double similaritySum = 0;
-//
-//	for (row=0; row < rows; row++) {
-//		for (col=0; col < cols; col++) {
-//			Vec3d pixelA = imgA.at<Vec3d>(row, col);
-//			Vec3d pixelB = imgB.at<Vec3d>(row, col);
-//
-//			double similarity = (pixelA.dot(pixelB) / (norm(pixelA) * norm(pixelB)));
-//			similaritySum += similarity < 0.0 ? 0.0 : similarity;
-//		}
-//	}
-//
-//	return similaritySum / double(rows * cols);
+double FootageTrimmer::imageSimilarityVal(const Mat_<Vec3d> &imgA, const Mat_<Vec3d> &imgB) {
     Mat_<Vec3d> imgABlurred;
     Mat_<Vec3d> imgBBlurred;
 
     GaussianBlur(imgA, imgABlurred, Size(7,7), 1.5, 1.5);
     GaussianBlur(imgB, imgBBlurred, Size(7,7), 1.5, 1.5);
-    ImgDiffProcessor diffProcessor(imgABlurred, imgBBlurred);
+    ImgSimilarityProcessor simProcessor(imgABlurred, imgBBlurred);
     int numPixels = imgA.rows * imgA.cols;
-    parallel_for_(Range(0,numPixels), diffProcessor);
-    return diffProcessor.getValue();
+    parallel_for_(Range(0,numPixels), simProcessor);
+    return simProcessor.getValue();
 }
 
 FootageTrimmer::FootageTrimmer(Mat_<Vec3d> trainedPic) {
@@ -160,17 +143,26 @@ Size FootageTrimmer::getFrameSize() const{
     return this->trainedPic.size();
 }
 
-FootageTrimmer::TrimmedFootage::TrimmedFootage(Mat_<Vec3d> avgFrame, VideoCapture & videoCapture, double tolerance):
-        avgFrame(avgFrame), videoCapture(videoCapture), tolerance(tolerance) {
+FootageTrimmer::TrimmedFootage::TrimmedFootage(Mat_<Vec3d> avgFrame, VideoCapture & videoCapture, double similarityLowerBound):
+        avgFrame(avgFrame), videoCapture(videoCapture), similarityLowerBound(similarityLowerBound), numSkippedFrames(0) {
     // nothing else to do other than initialization list
 }
 
 void FootageTrimmer::TrimmedFootage::operator>>(Mat_<Vec3d> &outFrame) {
     Mat_<Vec3b> intFrame;
+    bool shouldSkipFrame;
     do {
         this->videoCapture >> intFrame;
         intFrame.convertTo(outFrame, CV_64F);
-    } while (!outFrame.empty() && FootageTrimmer::imageDiffVal(this->avgFrame, outFrame) < this->tolerance);
+        if (!outFrame.empty()) {
+            double similarity = FootageTrimmer::imageSimilarityVal(outFrame, this->avgFrame);
+            shouldSkipFrame = similarity > this->similarityLowerBound;
+        } else {
+            shouldSkipFrame = false;
+        }
+
+        this->numSkippedFrames += shouldSkipFrame;
+    } while (shouldSkipFrame);
 }
 
 void FootageTrimmer::TrimmedFootage::operator>>(VideoWriter &videoWriter) {
@@ -182,6 +174,7 @@ void FootageTrimmer::TrimmedFootage::operator>>(VideoWriter &videoWriter) {
         if ((frameCount++ % 25) == 0) {
             double videoPos = this->videoCapture.get(CV_CAP_PROP_POS_AVI_RATIO);
             cout << "Video Position: " << videoPos << endl;
+            cout << "Curr Num Frames Skipped: " << this->numSkippedFrames << endl;
         }
         frame.convertTo(intFrame, CV_8UC3);
         videoWriter << intFrame;
@@ -191,4 +184,8 @@ void FootageTrimmer::TrimmedFootage::operator>>(VideoWriter &videoWriter) {
 
 FootageTrimmer::TrimmedFootage FootageTrimmer::trim(VideoCapture & videoCapture, double tolerance) {
     return FootageTrimmer::TrimmedFootage(this->trainedPic, videoCapture, tolerance);
+}
+
+long FootageTrimmer::TrimmedFootage::getNumSkippedFrames() const {
+    return this->numSkippedFrames;
 }

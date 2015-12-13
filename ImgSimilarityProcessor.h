@@ -2,18 +2,18 @@
 // Created by Sourabh Desai on 12/3/15.
 //
 
-#ifndef SVDESAI2_FINAL_IMGDIFFPROCESSOR_H
-#define SVDESAI2_FINAL_IMGDIFFPROCESSOR_H
+#ifndef SVDESAI2_FINAL_IMGSIMPROCESSOR_H
+#define SVDESAI2_FINAL_IMGSIMPROCESSOR_H
 
 #include <opencv2/opencv.hpp>
 
 using namespace cv;
 
-class ImgDiffProcessor: public cv::ParallelLoopBody {
+class ImgSimilarityProcessor : public cv::ParallelLoopBody {
 
 public:
-    ImgDiffProcessor(const Mat_<Vec3d> &imgA, const Mat_<Vec3d> &imgB);
-    ~ImgDiffProcessor();
+    ImgSimilarityProcessor(const Mat_<Vec3d> &imgA, const Mat_<Vec3d> &imgB);
+    ~ImgSimilarityProcessor();
 
     virtual void operator()( const cv::Range &r ) const;
 
@@ -27,4 +27,4 @@ private:
 };
 
 
-#endif //SVDESAI2_FINAL_IMGDIFFPROCESSOR_H
+#endif //SVDESAI2_FINAL_IMGSIMPROCESSOR_H

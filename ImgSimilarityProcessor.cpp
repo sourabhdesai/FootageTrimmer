@@ -2,14 +2,14 @@
 // Created by Sourabh Desai on 12/3/15.
 //
 
-#include "ImgDiffProcessor.h"
+#include "ImgSimilarityProcessor.h"
 
-ImgDiffProcessor::ImgDiffProcessor(const Mat_<Vec3d> &imgA, const Mat_<Vec3d> &imgB) : imgA(imgA), imgB(imgB) {
+ImgSimilarityProcessor::ImgSimilarityProcessor(const Mat_<Vec3d> &imgA, const Mat_<Vec3d> &imgB) : imgA(imgA), imgB(imgB) {
     this->diffValues = new double[imgA.rows * imgA.cols];
     this->diff = -1;
 }
 
-void ImgDiffProcessor::operator()(const cv::Range &r) const {
+void ImgSimilarityProcessor::operator()(const cv::Range &r) const {
     int idx;
     for (idx = r.start; idx < r.end; idx++) {
         const Vec3d & pixelA = this->imgA.at<Vec3d>(idx);
@@ -21,7 +21,7 @@ void ImgDiffProcessor::operator()(const cv::Range &r) const {
     }
 }
 
-double ImgDiffProcessor::getValue() {
+double ImgSimilarityProcessor::getValue() {
     if (this->diff >= 0) {
         return this->diff;
     }
@@ -30,12 +30,12 @@ double ImgDiffProcessor::getValue() {
     size_t idx;
 
     for (idx=0; idx < (this->imgA.rows * this->imgA.cols); idx++) {
-        this->diff += this->diffValues[idx];
+        this->diff += isnan(this->diffValues[idx]) ? 0.0 : this->diffValues[idx];
     }
 
     return this->diff;
 }
 
-ImgDiffProcessor::~ImgDiffProcessor() {
+ImgSimilarityProcessor::~ImgSimilarityProcessor() {
     delete [] this->diffValues;
 }

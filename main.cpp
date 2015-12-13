@@ -9,7 +9,7 @@ using std::string;
 
 using namespace cv;
 
-#define TOLERANCE_FACTOR 0.66
+#define TOLERANCE_FACTOR 0.99
 
 /**
  * Command Line Options:
@@ -107,10 +107,19 @@ int main(int argc, char *argv[]) {
 
     if (compressedVideoPath.length()) {
         double fps = inputVideo.get(CV_CAP_PROP_FPS);
+
+        if (verbose) {
+            cout << "Output Video FPS: " << fps << endl;
+        }
+
         Size frameSize = footageTrimmer.getFrameSize();
         VideoWriter outputVideo(compressedVideoPath, CV_FOURCC('m', 'p', '4', 'v'), fps, frameSize);
         FootageTrimmer::TrimmedFootage trimmedFootage = footageTrimmer.trim(inputVideo, TOLERANCE_FACTOR * frameSize.area());
         trimmedFootage >> outputVideo;
+
+        if (verbose) {
+            cout << "Num Skipped Frames: " << trimmedFootage.getNumSkippedFrames() << endl;
+        }
     }
 
 

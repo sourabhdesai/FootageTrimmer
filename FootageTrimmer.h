@@ -5,10 +5,10 @@
 #include <vector>
 #include <algorithm>
 #include <iostream>
-#include "ImgDiffProcessor.h"
+#include "ImgSimilarityProcessor.h"
 
-#define CLUSTER_SIZE 10
-#define NUM_REFINEMENT_ITERATIONS 85
+#define CLUSTER_SIZE 3
+#define NUM_REFINEMENT_ITERATIONS 50
 
 using namespace cv;
 using std::vector;
@@ -34,12 +34,15 @@ public:
 		void operator>>(Mat_<Vec3d> & outFrame);
 		void operator>>(VideoWriter & videoWriter);
 
-		TrimmedFootage(Mat_<Vec3d> avgFrame, VideoCapture & videoCapture, double tolerance);
+		long getNumSkippedFrames() const;
+
+		TrimmedFootage(Mat_<Vec3d> avgFrame, VideoCapture & videoCapture, double similarityLowerBound);
 
 	private:
 		Mat_<Vec3d> avgFrame;
 		VideoCapture videoCapture;
-		const double tolerance;
+		const double similarityLowerBound;
+		long numSkippedFrames;
 	};
 
 	FootageTrimmer::TrimmedFootage trim(VideoCapture & videoCapture, double tolerance);
@@ -52,9 +55,9 @@ private:
 	Mat_<Vec3d> getBackgroundPic(VideoCapture & trainingVideo);
 
 	/**
-	 * Calculates values that indicates the amount of difference between the two images.
+	 * Calculates values that indicates the amount of similarity between the two images.
 	 */
-	static double imageDiffVal(const Mat_<Vec3d> &imgA, const Mat_<Vec3d> &imgB);
+	static double imageSimilarityVal(const Mat_<Vec3d> &imgA, const Mat_<Vec3d> &imgB);
 
 	Mat_<Vec3d> getAveragePicture(const vector<Mat_<Vec3d> > &images);
 
