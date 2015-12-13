@@ -106,8 +106,7 @@ double FootageTrimmer::imageSimilarityVal(const Mat_<Vec3d> &imgA, const Mat_<Ve
     GaussianBlur(imgA, imgABlurred, Size(7,7), 1.5, 1.5);
     GaussianBlur(imgB, imgBBlurred, Size(7,7), 1.5, 1.5);
     ImgSimilarityProcessor simProcessor(imgABlurred, imgBBlurred);
-    int numPixels = imgA.rows * imgA.cols;
-    parallel_for_(Range(0,numPixels), simProcessor);
+    parallel_for_(Range(0,imgA.rows), simProcessor);
     return simProcessor.getValue();
 }
 
@@ -156,7 +155,7 @@ void FootageTrimmer::TrimmedFootage::operator>>(Mat_<Vec3d> &outFrame) {
         intFrame.convertTo(outFrame, CV_64F);
         if (!outFrame.empty()) {
             double similarity = FootageTrimmer::imageSimilarityVal(outFrame, this->avgFrame);
-            shouldSkipFrame = similarity > this->similarityLowerBound;
+            shouldSkipFrame = isnan(similarity) || similarity > this->similarityLowerBound;
         } else {
             shouldSkipFrame = false;
         }

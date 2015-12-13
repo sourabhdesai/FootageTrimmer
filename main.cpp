@@ -9,7 +9,7 @@ using std::string;
 
 using namespace cv;
 
-#define TOLERANCE_FACTOR 0.99
+#define TOLERANCE_FACTOR 0.995
 
 /**
  * Command Line Options:
